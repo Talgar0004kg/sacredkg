@@ -165,8 +165,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     icon: const Icon(Icons.person_outline),
                     label: const Text('Войти как гость'),
                   ),
-                  const SizedBox(height: 18),
-                  const _LoginHints(),
                 ],
               ),
             ),
@@ -387,35 +385,3 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 }
 
-class _LoginHints extends StatelessWidget {
-  const _LoginHints();
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Card(
-      elevation: 0,
-      color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.6),
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Подсказка',
-              style: theme.textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(height: 6),
-            const Text(
-              '• Администратор: admin@sacred.kg / admin2026\n'
-              '• Турагент: креды создаёт администратор\n'
-              '• Пользователь: любой email/пароль или «Войти как гость»',
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
