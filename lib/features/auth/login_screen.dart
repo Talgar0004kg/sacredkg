@@ -149,6 +149,18 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 8),
                   OutlinedButton.icon(
+                    onPressed: _submitting
+                        ? null
+                        : () => Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) => const RegisterScreen(),
+                              ),
+                            ),
+                    icon: const Icon(Icons.person_add_alt_1_outlined),
+                    label: const Text('Создать аккаунт'),
+                  ),
+                  const SizedBox(height: 8),
+                  TextButton.icon(
                     onPressed: _submitting ? null : _continueAsGuest,
                     icon: const Icon(Icons.person_outline),
                     label: const Text('Войти как гость'),
@@ -156,6 +168,216 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 18),
                   const _LoginHints(),
                 ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Регистрация для обычного пользователя.
+///
+/// Создаёт USER-сессию и сразу отправляет на /home.
+/// Никакой серверной части — данные хранятся локально через SharedPreferences,
+/// что соответствует общей оффлайн-первой логике приложения.
+class RegisterScreen extends StatefulWidget {
+  const RegisterScreen({super.key});
+
+  @override
+  State<RegisterScreen> createState() => _RegisterScreenState();
+}
+
+class _RegisterScreenState extends State<RegisterScreen> {
+  final _formKey = GlobalKey<FormState>();
+  final _name = TextEditingController();
+  final _email = TextEditingController();
+  final _password = TextEditingController();
+  final _confirm = TextEditingController();
+  bool _obscure = true;
+  bool _agree = false;
+  bool _submitting = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _email.dispose();
+    _password.dispose();
+    _confirm.dispose();
+    super.dispose();
+  }
+
+  String? _validateEmail(String? v) {
+    final value = (v ?? '').trim();
+    if (value.isEmpty) return 'Введите email';
+    final ok = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(value);
+    if (!ok) return 'Некорректный email';
+    return null;
+  }
+
+  String? _validatePassword(String? v) {
+    final value = v ?? '';
+    if (value.length < 6) return 'Минимум 6 символов';
+    return null;
+  }
+
+  String? _validateConfirm(String? v) {
+    if ((v ?? '') != _password.text) return 'Пароли не совпадают';
+    return null;
+  }
+
+  String? _validateName(String? v) {
+    if ((v ?? '').trim().length < 2) return 'Минимум 2 символа';
+    return null;
+  }
+
+  Future<void> _submit() async {
+    setState(() => _error = null);
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+    if (!_agree) {
+      setState(() => _error = 'Подтвердите согласие с правилами');
+      return;
+    }
+    final email = _email.text.trim().toLowerCase();
+    if (email == 'admin@sacred.kg' ||
+        await AuthService.isKnownAgent(email)) {
+      setState(() => _error = 'Этот email уже используется');
+      return;
+    }
+    setState(() => _submitting = true);
+    await AuthService.login(
+      role: UserRole.user,
+      email: email,
+      name: _name.text.trim(),
+    );
+    if (!mounted) return;
+    setState(() => _submitting = false);
+    context.go('/home');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Scaffold(
+      appBar: AppBar(title: const Text('Регистрация')),
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 480),
+              child: Form(
+                key: _formKey,
+                autovalidateMode: AutovalidateMode.onUserInteraction,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      'Создайте аккаунт путешественника',
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Сохраняйте избранное, бронирования и историю общения с '
+                      'ИИ-гидами Апашкой и Аташкой.',
+                      style: theme.textTheme.bodyMedium,
+                    ),
+                    const SizedBox(height: 20),
+                    TextFormField(
+                      controller: _name,
+                      textInputAction: TextInputAction.next,
+                      decoration: const InputDecoration(
+                        labelText: 'Имя',
+                        prefixIcon: Icon(Icons.badge_outlined),
+                      ),
+                      validator: _validateName,
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _email,
+                      keyboardType: TextInputType.emailAddress,
+                      textInputAction: TextInputAction.next,
+                      decoration: const InputDecoration(
+                        labelText: 'Email',
+                        prefixIcon: Icon(Icons.alternate_email),
+                      ),
+                      validator: _validateEmail,
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _password,
+                      obscureText: _obscure,
+                      textInputAction: TextInputAction.next,
+                      decoration: InputDecoration(
+                        labelText: 'Пароль',
+                        helperText: 'Не короче 6 символов',
+                        prefixIcon: const Icon(Icons.lock_outline),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _obscure
+                                ? Icons.visibility_outlined
+                                : Icons.visibility_off_outlined,
+                          ),
+                          onPressed: () =>
+                              setState(() => _obscure = !_obscure),
+                        ),
+                      ),
+                      validator: _validatePassword,
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _confirm,
+                      obscureText: _obscure,
+                      textInputAction: TextInputAction.done,
+                      onFieldSubmitted: (_) => _submit(),
+                      decoration: const InputDecoration(
+                        labelText: 'Повторите пароль',
+                        prefixIcon: Icon(Icons.lock_reset_outlined),
+                      ),
+                      validator: _validateConfirm,
+                    ),
+                    const SizedBox(height: 12),
+                    CheckboxListTile(
+                      contentPadding: EdgeInsets.zero,
+                      controlAffinity: ListTileControlAffinity.leading,
+                      value: _agree,
+                      onChanged: (v) => setState(() => _agree = v ?? false),
+                      title: const Text(
+                        'Согласен с правилами посещения сакральных мест и '
+                        'обработкой персональных данных',
+                      ),
+                    ),
+                    if (_error != null) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        _error!,
+                        style: TextStyle(color: theme.colorScheme.error),
+                      ),
+                    ],
+                    const SizedBox(height: 16),
+                    FilledButton(
+                      onPressed: _submitting ? null : _submit,
+                      child: _submitting
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Text('Зарегистрироваться'),
+                    ),
+                    const SizedBox(height: 8),
+                    TextButton(
+                      onPressed: _submitting
+                          ? null
+                          : () => Navigator.of(context).pop(),
+                      child: const Text('Уже есть аккаунт — войти'),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

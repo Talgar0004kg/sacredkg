@@ -133,6 +133,14 @@ class AuthService {
 
   // ---------- Agent management ----------
 
+  /// True if [email] matches an agent currently created by the admin.
+  static Future<bool> isKnownAgent(String email) async {
+    final normalized = email.trim().toLowerCase();
+    if (normalized.isEmpty) return false;
+    final agents = await getAgents();
+    return agents.any((a) => a.email.toLowerCase() == normalized);
+  }
+
   static Future<List<AgentCredentials>> getAgents() async {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString(_kAgentsJson);
